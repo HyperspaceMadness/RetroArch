@@ -2373,6 +2373,7 @@ struct aspect_ratio_elem aspectratio_lut[ASPECT_RATIO_END] = {
    { 0.0f,            "Config"        },
    { 1.0f,            "Square pixel"  },
    { 1.0f,            "Core provided" },
+   { 1.3333f,         "Full" },
    { 0.0f,            "Custom"        }
 };
 
