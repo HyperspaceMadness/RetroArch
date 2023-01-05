@@ -532,6 +532,9 @@ class Pass
       void set_frame_count(uint64_t count) { frame_count = count; }
       void set_frame_count_period(unsigned p) { frame_count_period = p; }
       void set_frame_direction(int32_t dir) { frame_direction = dir; }
+      void set_video_rotation(int32_t vid_rotate) { video_rotation = vid_rotate; }
+      void set_core_requested_rotation(int32_t core_rotate) { core_requested_rotation = core_rotate; }
+      void set_full_rotation(int32_t rotate) { full_rotation = rotate; }
       void set_name(const char *name) { pass_name = name; }
       const std::string &get_name() const { return pass_name; }
       glslang_filter_chain_filter get_source_filter() const { 
@@ -617,6 +620,11 @@ class Pass
 
       uint64_t frame_count        = 0;
       int32_t frame_direction     = 1;
+
+      int32_t video_rotation           = 0;
+      int32_t core_requested_rotation  = 0;
+      int32_t full_rotation            = 0;
+
       unsigned frame_count_period = 0;
       unsigned pass_number        = 0;
 
@@ -677,6 +685,11 @@ struct vulkan_filter_chain
       void set_frame_count(uint64_t count);
       void set_frame_count_period(unsigned pass, unsigned period);
       void set_frame_direction(int32_t direction);
+
+      void set_video_rotation(int32_t rotate);
+      void set_core_requested_rotation(int32_t rotate);
+      void set_full_rotation(int32_t rotate);
+
       void set_pass_name(unsigned pass, const char *name);
 
       void add_static_texture(std::unique_ptr<StaticTexture> texture);
@@ -1026,7 +1039,7 @@ static bool vulkan_filter_chain_load_luts(
          vulkan_filter_chain_load_lut(cmd, info, chain, &shader->lut[i]);
       if (!image)
       {
-         RARCH_ERR("[Vulkan]: Failed to load LUT \"%s\".\n", shader->lut[i].path);
+         RARCH_ERR("[Vulkan]: Failed to load LUT \"%s\" with Path: \"%s\".\n", shader->lut[i].id, shader->lut[i].path);
          goto error;
       }
 
@@ -1644,9 +1657,30 @@ void vulkan_filter_chain::set_frame_count_period(
 
 void vulkan_filter_chain::set_frame_direction(int32_t direction)
 {
-   unsigned i;
-   for (i = 0; i < passes.size(); i++)
-      passes[i]->set_frame_direction(direction);
+    unsigned i;
+    for (i = 0; i < passes.size(); i++)
+        passes[i]->set_frame_direction(direction);
+}
+
+void vulkan_filter_chain::set_video_rotation(int32_t rotate)
+{
+    unsigned i;
+    for (i = 0; i < passes.size(); i++)
+        passes[i]->set_video_rotation(rotate);
+}
+
+void vulkan_filter_chain::set_core_requested_rotation(int32_t rotate)
+{
+    unsigned i;
+    for (i = 0; i < passes.size(); i++)
+        passes[i]->set_video_rotation(rotate);
+}
+
+void vulkan_filter_chain::set_full_rotation(int32_t rotate)
+{
+    unsigned i;
+    for (i = 0; i < passes.size(); i++)
+        passes[i]->set_video_rotation(rotate);
 }
 
 void vulkan_filter_chain::set_pass_name(unsigned pass, const char *name)
@@ -2433,16 +2467,21 @@ void Pass::build_semantic_texture(VkDescriptorSet set, uint8_t *buffer,
    set_semantic_texture(set, semantic, texture);
 }
 
-void Pass::build_semantic_texture_array(VkDescriptorSet set, uint8_t *buffer,
-      slang_texture_semantic semantic, unsigned index, const Texture &texture)
+void Pass::build_semantic_texture_array(VkDescriptorSet set, 
+      uint8_t *buffer,
+      slang_texture_semantic semantic, 
+      unsigned index, 
+      const Texture &texture)
 {
-   build_semantic_texture_array_vec4(buffer, semantic, index,
-         texture.texture.width, texture.texture.height);
+   build_semantic_texture_array_vec4(buffer, semantic, index, texture.texture.width, texture.texture.height);
    set_semantic_texture_array(set, semantic, index, texture);
 }
 
-void Pass::build_semantics(VkDescriptorSet set, uint8_t *buffer,
-      const float *mvp, const Texture &original, const Texture &source)
+void Pass::build_semantics(VkDescriptorSet set, 
+      uint8_t *buffer,
+      const float *mvp, 
+      const Texture &original, 
+      const Texture &source)
 {
    unsigned i;
 
@@ -2469,6 +2508,7 @@ void Pass::build_semantics(VkDescriptorSet set, uint8_t *buffer,
    build_semantic_vec4(buffer, SLANG_SEMANTIC_OUTPUT,
                        current_framebuffer_size.width,
                        current_framebuffer_size.height);
+                       
    build_semantic_vec4(buffer, SLANG_SEMANTIC_FINAL_VIEWPORT,
                        unsigned(current_viewport.width),
                        unsigned(current_viewport.height));
@@ -2478,16 +2518,18 @@ void Pass::build_semantics(VkDescriptorSet set, uint8_t *buffer,
                        ? uint32_t(frame_count % frame_count_period) 
                        : uint32_t(frame_count));
 
-   build_semantic_int(buffer, SLANG_SEMANTIC_FRAME_DIRECTION,
-                      frame_direction);
+   build_semantic_int(buffer, SLANG_SEMANTIC_FRAME_DIRECTION, frame_direction);
+
+   build_semantic_uint(buffer, SLANG_SEMANTIC_VIDEO_ROTATION, video_rotation);
+   build_semantic_uint(buffer, SLANG_SEMANTIC_CORE_REQUESTED_ROTATION, core_requested_rotation);
+   build_semantic_uint(buffer, SLANG_SEMANTIC_FULL_ROTATION, full_rotation);
 
    /* Standard inputs */
    build_semantic_texture(set, buffer, SLANG_TEXTURE_SEMANTIC_ORIGINAL, original);
    build_semantic_texture(set, buffer, SLANG_TEXTURE_SEMANTIC_SOURCE, source);
 
    /* ORIGINAL_HISTORY[0] is an alias of ORIGINAL. */
-   build_semantic_texture_array(set, buffer,
-         SLANG_TEXTURE_SEMANTIC_ORIGINAL_HISTORY, 0, original);
+   build_semantic_texture_array(set, buffer, SLANG_TEXTURE_SEMANTIC_ORIGINAL_HISTORY, 0, original);
 
    /* Parameters. */
    for (i = 0; i < filtered_parameters.size(); i++)
@@ -3242,6 +3284,27 @@ void vulkan_filter_chain_set_frame_direction(
       int32_t direction)
 {
    chain->set_frame_direction(direction);
+}
+
+void vulkan_filter_chain_set_video_rotation(
+      vulkan_filter_chain_t *chain,
+      int32_t rotate)
+{
+   chain->set_video_rotation(rotate);
+}
+
+void vulkan_filter_chain_set_core_requested_rotation(
+      vulkan_filter_chain_t *chain,
+      int32_t rotate)
+{
+   chain->set_core_requested_rotation(rotate);
+}
+
+void vulkan_filter_chain_set_full_rotation(
+      vulkan_filter_chain_t *chain,
+      int32_t rotate)
+{
+   chain->set_full_rotation(rotate);
 }
 
 void vulkan_filter_chain_set_pass_name(

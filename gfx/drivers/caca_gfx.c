@@ -90,9 +90,17 @@ static void *caca_gfx_init(const video_info_t *video,
    return caca;
 }
 
-static bool caca_gfx_frame(void *data, const void *frame,
-      unsigned frame_width, unsigned frame_height, uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info)
+static bool caca_gfx_frame(void *data, 
+      const void *frame,
+      unsigned frame_width, 
+      unsigned frame_height, 
+      uint64_t frame_count,
+      unsigned pitch, 
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    size_t len                = 0;
    void *buffer              = NULL;

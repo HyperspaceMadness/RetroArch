@@ -731,9 +731,17 @@ static void gl1_readback(
          (GLenum)fmt, (GLenum)type, (GLvoid*)src);
 }
 
-static bool gl1_gfx_frame(void *data, const void *frame,
-      unsigned frame_width, unsigned frame_height, uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info)
+static bool gl1_gfx_frame(void *data, 
+      const void *frame,
+      unsigned frame_width, 
+      unsigned frame_height, 
+      uint64_t frame_count,
+      unsigned pitch, 
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    const void *frame_to_copy        = NULL;
    unsigned mode_width              = 0;

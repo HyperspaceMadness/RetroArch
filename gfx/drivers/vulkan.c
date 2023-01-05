@@ -2075,10 +2075,17 @@ static void vulkan_inject_black_frame(vk_t *vk, video_frame_info_t *video_info)
 #endif
 }
 
-static bool vulkan_frame(void *data, const void *frame,
-      unsigned frame_width, unsigned frame_height,
+static bool vulkan_frame(void *data, 
+      const void *frame,
+      unsigned frame_width, 
+      unsigned frame_height,
       uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info)
+      unsigned pitch, 
+      int32_t video_rotation,
+      int32_t core_requested_rotation,
+      int32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    int i;
    VkSubmitInfo submit_info;
@@ -2098,18 +2105,15 @@ static bool vulkan_frame(void *data, const void *frame,
    bool runloop_is_paused                        = video_info->runloop_is_paused;
    unsigned video_width                          = video_info->width;
    unsigned video_height                         = video_info->height;
-   struct font_params *osd_params                = (struct font_params*)
-      &video_info->osd_stat_params;
+   struct font_params *osd_params                = (struct font_params*)&video_info->osd_stat_params;
 #ifdef HAVE_MENU
    bool menu_is_alive                            = video_info->menu_is_alive;
 #endif
 #ifdef HAVE_GFX_WIDGETS
    bool widgets_active                           = video_info->widgets_active;
 #endif
-   unsigned frame_index                          =
-      vk->context->current_frame_index;
-   unsigned swapchain_index                      =
-      vk->context->current_swapchain_index;
+   unsigned frame_index                          = vk->context->current_frame_index;
+   unsigned swapchain_index                      = vk->context->current_swapchain_index;
    bool overlay_behind_menu                      = video_info->overlay_behind_menu;
 
 #ifdef VULKAN_HDR_SWAPCHAIN
@@ -2235,19 +2239,16 @@ static bool vulkan_frame(void *data, const void *frame,
    }
 
    /* Notify filter chain about the new sync index. */
-   vulkan_filter_chain_notify_sync_index(
-         (vulkan_filter_chain_t*)vk->filter_chain, frame_index);
-   vulkan_filter_chain_set_frame_count(
-         (vulkan_filter_chain_t*)vk->filter_chain, frame_count);
+   vulkan_filter_chain_notify_sync_index((vulkan_filter_chain_t*)vk->filter_chain, frame_index);
+   vulkan_filter_chain_set_frame_count((vulkan_filter_chain_t*)vk->filter_chain, frame_count);
 #ifdef HAVE_REWIND
-   vulkan_filter_chain_set_frame_direction(
-         (vulkan_filter_chain_t*)vk->filter_chain,
-         state_manager_frame_is_reversed() ? -1 : 1);
+   vulkan_filter_chain_set_frame_direction((vulkan_filter_chain_t*)vk->filter_chain, state_manager_frame_is_reversed() ? -1 : 1);
 #else
-   vulkan_filter_chain_set_frame_direction(
-         (vulkan_filter_chain_t*)vk->filter_chain,
-         1);
+   vulkan_filter_chain_set_frame_direction((vulkan_filter_chain_t*)vk->filter_chain, 1);
 #endif
+   vulkan_filter_chain_set_video_rotation((vulkan_filter_chain_t*)vk->filter_chain, video_rotation);
+   vulkan_filter_chain_set_core_requested_rotation((vulkan_filter_chain_t*)vk->filter_chain, core_requested_rotation);
+   vulkan_filter_chain_set_full_rotation((vulkan_filter_chain_t*)vk->filter_chain, full_rotation);
 
    /* Render offscreen filter chain passes. */
    {
@@ -2929,8 +2930,17 @@ static bool vulkan_frame(void *data, const void *frame,
       vk->context->flags |= VK_CTX_FLAG_SWAP_INTERVAL_EMULATION_LOCK;
       for (i = 1; i < (int) vk->context->swap_interval; i++)
       {
-         if (!vulkan_frame(vk, NULL, 0, 0, frame_count, 0, msg,
-                  video_info))
+         if (!vulkan_frame(vk, 
+                           NULL, 
+                           0, 
+                           0, 
+                           frame_count, 
+                           0, 
+                           video_rotation, 
+                           core_requested_rotation, 
+                           full_rotation, 
+                           msg, 
+                           video_info))
          {
             vk->context->flags &= ~VK_CTX_FLAG_SWAP_INTERVAL_EMULATION_LOCK;
             return false;

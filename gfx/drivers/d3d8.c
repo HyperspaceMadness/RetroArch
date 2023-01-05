@@ -1469,10 +1469,17 @@ static void d3d8_update_title(void)
 #endif
 }
 
-static bool d3d8_frame(void *data, const void *frame,
-      unsigned frame_width, unsigned frame_height,
-      uint64_t frame_count, unsigned pitch,
-      const char *msg, video_frame_info_t *video_info)
+static bool d3d8_frame(void *data, 
+      const void *frame,
+      unsigned frame_width, 
+      unsigned frame_height,
+      uint64_t frame_count, 
+      unsigned pitch,
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    D3DVIEWPORT8 screen_vp;
    unsigned i                          = 0;

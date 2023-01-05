@@ -462,8 +462,14 @@ static void video_thread_loop(void *data)
                video_driver_build_info(&video_info);
 
                ret = thr->driver->frame(thr->driver_data,
-                  thr->frame.buffer, thr->frame.width, thr->frame.height,
-                  thr->frame.count, thr->frame.pitch,
+                  thr->frame.buffer,
+                  thr->frame.width,
+                  thr->frame.height,
+                  thr->frame.count,
+                  thr->frame.pitch,
+                  thr->frame.video_rotation,
+                  thr->frame.core_requested_rotation,
+                  thr->frame.full_rotation,
                   *thr->frame.msg ? thr->frame.msg : NULL,
                   &video_info);
 
@@ -573,9 +579,17 @@ static bool video_thread_has_windowed(void *data)
    return ret;
 }
 
-static bool video_thread_frame(void *data, const void *frame_,
-      unsigned width, unsigned height, uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info)
+static bool video_thread_frame(void *data, 
+      const void *frame_,
+      unsigned width, 
+      unsigned height, 
+      uint64_t frame_count,
+      unsigned pitch, 
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    thread_video_t *thr = (thread_video_t*)data;
 
@@ -589,8 +603,17 @@ static bool video_thread_frame(void *data, const void *frame_,
       thread_update_driver_state(thr);
 
       if (thr->driver_data && thr->driver && thr->driver->frame)
-         return thr->driver->frame(thr->driver_data, frame_,
-            width, height, frame_count, pitch, msg, video_info);
+         return thr->driver->frame(thr->driver_data, 
+            frame_,
+            width, 
+            height, 
+            frame_count, 
+            pitch, 
+            video_rotation, 
+            core_requested_rotation, 
+            full_rotation, 
+            msg, 
+            video_info);
 
       return false;
    }
@@ -638,6 +661,9 @@ static bool video_thread_frame(void *data, const void *frame_,
       thr->frame.height  = height;
       thr->frame.count   = frame_count;
       thr->frame.pitch   = copy_stride;
+      thr->frame.video_rotation   = video_rotation;
+      thr->frame.core_requested_rotation   = core_requested_rotation;
+      thr->frame.full_rotation   = full_rotation;
 
       if (msg)
          strlcpy(thr->frame.msg, msg, sizeof(thr->frame.msg));
@@ -1326,6 +1352,7 @@ static const video_driver_t video_thread = {
    video_thread_free,
    "Thread wrapper",
    video_thread_set_viewport,
+   // TODO need to add other rotation?
    video_thread_set_rotation,
    video_thread_viewport_info,
    video_thread_read_viewport,

@@ -537,7 +537,7 @@ static struct video_shader_parameter *video_shader_parse_find_parameter(
 {
    int i;
 
-   for (i = 0; i < num_params; i++)
+   for (i = 0; i < (int)num_params; i++)
    {
       if (string_is_equal(params[i].id, id))
          return &params[i];

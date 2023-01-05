@@ -225,9 +225,18 @@ static void *video_null_init(const video_info_t *video,
    return (void*)-1;
 }
 
-static bool video_null_frame(void *a, const void *b, unsigned c, unsigned d,
-uint64_t e,
-unsigned f, const char *g, video_frame_info_t *h) { return true; }
+static bool video_null_frame(void *a,
+   const void *b,
+   unsigned c,
+   unsigned d,
+   uint64_t e,
+   unsigned i,
+   uint32_t f,
+   uint32_t g,
+   uint32_t h,
+   const char *j,
+   video_frame_info_t *k) { return true; }
+
 static void video_null_free(void *a) { }
 static void video_null_set_nonblock_state(void *a, bool b, bool c, unsigned d) { }
 static bool video_null_alive(void *a) { return frontend_driver_get_signal_handler_state() != 1; }
@@ -250,6 +259,7 @@ video_driver_t video_null = {
    "null",
    NULL, /* set_viewport */
    NULL, /* set_rotation */
+// TODO - Add other rotation here?
    NULL, /* viewport_info */
    NULL, /* read_viewport */
    NULL, /* read_frame_raw */
@@ -4066,8 +4076,15 @@ void video_driver_frame(const void *data, unsigned width,
          && video_st->current_video->frame)
    {
       if (video_st->current_video->frame(
-               video_st->data, data, width, height,
-               video_st->frame_count, (unsigned)pitch,
+               video_st->data,
+               data,
+               width,
+               height,
+               video_st->frame_count,
+               (unsigned)pitch,
+               video_st->video_rotation,
+               video_st->core_requested_rotation,
+               video_st->full_rotation,
                video_info.menu_screensaver_active || video_info.notifications_hidden ? "" : video_driver_msg,
                &video_info))
          video_st->flags |=  VIDEO_FLAG_ACTIVE;

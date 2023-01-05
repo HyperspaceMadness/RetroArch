@@ -1079,9 +1079,17 @@ static void wiiu_gfx_update_uniform_block(wiiu_video_t *wiiu,
    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_UNIFORM_BLOCK, ubo, size);
 }
 
-static bool wiiu_gfx_frame(void *data, const void *frame,
-      unsigned width, unsigned height, uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info)
+static bool wiiu_gfx_frame(void *data, 
+      const void *frame,
+      unsigned width, 
+      unsigned height, 
+      uint64_t frame_count,
+      unsigned pitch, 
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info)
 {
    uint32_t i;
    wiiu_video_t *wiiu             = (wiiu_video_t *) data;

@@ -98,6 +98,10 @@ struct shader_uniforms
    int frame_count;
    int frame_direction;
 
+   int video_rotation;
+   int core_requested_rotation;
+   int full_rotation;
+
    int lut_texture[GFX_MAX_TEXTURES];
    unsigned frame_count_mod;
 
@@ -737,6 +741,10 @@ static void gl_glsl_find_uniforms(glsl_shader_data_t *glsl,
    uni->frame_count     = gl_glsl_get_uniform(glsl, prog, "FrameCount");
    uni->frame_direction = gl_glsl_get_uniform(glsl, prog, "FrameDirection");
 
+   uni->full_rotation   = gl_glsl_get_uniform(glsl, prog, "FullRotation");
+   uni->video_rotation  = gl_glsl_get_uniform(glsl, prog, "VideoRotation");
+   uni->core_requested_rotation = gl_glsl_get_uniform(glsl, prog, "CoreRequestedRotation");
+
    for (i = 0; i < glsl->shader->luts; i++)
       uni->lut_texture[i] = glGetUniformLocation(prog, glsl->shader->lut[i].id);
 
@@ -1333,6 +1341,21 @@ static void gl_glsl_set_params(void *dat, void *shader_data)
          glUniform1i(uni->frame_direction, 1);
    }
 
+   if (uni->video_rotation >= 0)
+   {
+      glUniform1i(uni->video_rotation, retroarch_get_video_rotation());
+   }
+   
+   if (uni->core_requested_rotation >= 0)
+   {
+      glUniform1i(uni->core_requested_rotation, retroarch_get_core_requested_rotation());
+   }
+   
+   if (uni->full_rotation >= 0)
+   {
+      glUniform1i(uni->full_rotation, retroarch_get_rotation());
+   }
+   
    /* Set lookup textures. */
    for (i = 0; i < glsl->shader->luts; i++)
    {

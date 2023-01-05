@@ -305,7 +305,7 @@ MSG_HASH(
    )
 MSG_HASH(
    MENU_ENUM_SUBLABEL_VIDEO_ROTATION,
-   "Forces a certain rotation of the screen. The rotation is added to rotations which the core sets."
+   "Adds a rotation to the game image. The rotation is added to any rotation which the core sets."
    )
 #if defined(DINGUX) && defined(DINGUX_BETA)
 #endif

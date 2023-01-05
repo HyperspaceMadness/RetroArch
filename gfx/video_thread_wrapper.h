@@ -226,6 +226,9 @@ typedef struct thread_video
       unsigned width;
       unsigned height;
       unsigned pitch;
+      uint32_t video_rotation;
+      uint32_t core_requested_rotation;
+      uint32_t full_rotation;
       char msg[NAME_MAX_LENGTH];
       bool updated;
       bool within_thread;

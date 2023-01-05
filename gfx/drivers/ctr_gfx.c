@@ -1277,10 +1277,17 @@ static void* ctr_init(const video_info_t* video,
 #define CTR_INSPECT_MEMORY_USAGE
 #endif
 
-static bool ctr_frame(void* data, const void* frame,
-      unsigned width, unsigned height,
+static bool ctr_frame(void* data, 
+      const void* frame, 
+      unsigned width, 
+      unsigned height, 
       uint64_t frame_count,
-      unsigned pitch, const char* msg, video_frame_info_t *video_info)
+      unsigned pitch, 
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char* msg, 
+      video_frame_info_t *video_info)
 {
    static uint64_t current_tick, last_tick;
    extern GSPGPU_FramebufferInfo topFramebufferInfo, bottomFramebufferInfo;

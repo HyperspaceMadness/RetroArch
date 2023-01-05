@@ -504,6 +504,8 @@ enum retro_mod
                                             * Sets screen rotation of graphics.
                                             * Valid values are 0, 1, 2, 3, which rotates screen by 0, 90, 180,
                                             * 270 degrees counter-clockwise respectively.
+                                            * Also sets a value to be used by the shader system to do the rotation
+                                            * inside the shader
                                             */
 #define RETRO_ENVIRONMENT_GET_OVERSCAN  2  /* bool * --
                                             * NOTE: As of 2019 this callback is considered deprecated in favor of

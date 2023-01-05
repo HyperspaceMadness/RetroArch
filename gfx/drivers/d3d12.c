@@ -2119,6 +2119,9 @@ static bool d3d12_gfx_frame(
       unsigned            height,
       uint64_t            frame_count,
       unsigned            pitch,
+      uint32_t            video_rotation,
+      uint32_t            core_requested_rotation,
+      uint32_t            full_rotation,
       const char*         msg,
       video_frame_info_t* video_info)
 {

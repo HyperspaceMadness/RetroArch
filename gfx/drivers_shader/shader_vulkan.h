@@ -120,8 +120,14 @@ void vulkan_filter_chain_set_frame_count_period(vulkan_filter_chain_t *chain,
       unsigned pass,
       unsigned period);
 
-void vulkan_filter_chain_set_frame_direction(vulkan_filter_chain_t *chain,
+void vulkan_filter_chain_set_frame_direction(vulkan_filter_chain_t *chain, 
       int32_t direction);
+
+void vulkan_filter_chain_set_video_rotation(vulkan_filter_chain_t *chain, int32_t rotate);
+
+void vulkan_filter_chain_set_core_requested_rotation(vulkan_filter_chain_t *chain, int32_t rotate);
+
+void vulkan_filter_chain_set_full_rotation(vulkan_filter_chain_t* chain, int32_t rotate);
 
 void vulkan_filter_chain_build_offscreen_passes(vulkan_filter_chain_t *chain,
       VkCommandBuffer cmd, const VkViewport *vp);

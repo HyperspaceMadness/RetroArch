@@ -1610,9 +1610,15 @@ static void gx_free(void *data)
    free(data);
 }
 
-static bool gx_frame(void *data, const void *frame,
-      unsigned width, unsigned height,
-      uint64_t frame_count, unsigned pitch,
+static bool gx_frame(void *data, 
+      const void *frame,
+      unsigned width, 
+      unsigned height,
+      uint64_t frame_count, 
+      unsigned pitch,
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
       const char *msg,
       video_frame_info_t *video_info)
 {

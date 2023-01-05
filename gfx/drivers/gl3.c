@@ -1845,10 +1845,16 @@ static void gl3_draw_menu_texture(gl3_t *gl,
 }
 #endif
 
-static bool gl3_frame(void *data, const void *frame,
-      unsigned frame_width, unsigned frame_height,
+static bool gl3_frame(void *data,
+      const void *frame,
+      unsigned frame_width,
+      unsigned frame_height,
       uint64_t frame_count,
-      unsigned pitch, const char *msg,
+      unsigned pitch,
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg,
       video_frame_info_t *video_info)
 {
    struct gl3_filter_chain_texture texture;

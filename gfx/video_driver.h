@@ -759,9 +759,16 @@ typedef struct video_poke_interface
 /* msg is for showing a message on the screen
  * along with the video frame. */
 typedef bool (*video_driver_frame_t)(void *data,
-      const void *frame, unsigned width,
-      unsigned height, uint64_t frame_count,
-      unsigned pitch, const char *msg, video_frame_info_t *video_info);
+      const void *frame,
+      unsigned width,
+      unsigned height, 
+      uint64_t frame_count,
+      unsigned pitch,
+      uint32_t video_rotation,
+      uint32_t core_requested_rotation,
+      uint32_t full_rotation,
+      const char *msg, 
+      video_frame_info_t *video_info);
 
 typedef struct video_driver
 {
@@ -816,8 +823,11 @@ typedef struct video_driver
    /* Human-readable identifier. */
    const char *ident;
 
-   void (*set_viewport)(void *data, unsigned width, unsigned height,
-         bool force_full, bool allow_rotate);
+   void (*set_viewport)(void *data, 
+         unsigned width, 
+         unsigned height,
+         bool force_full, 
+         bool allow_rotate);
 
    void (*set_rotation)(void *data, unsigned rotation);
    void (*viewport_info)(void *data, struct video_viewport *vp);
@@ -829,8 +839,10 @@ typedef struct video_driver
     * (and must) be passed to free() by the caller, containing a
     * copy of the current raw frame in the active pixel format
     * and sets width, height and pitch to the correct values. */
-   void* (*read_frame_raw)(void *data, unsigned *width,
-   unsigned *height, size_t *pitch);
+   void* (*read_frame_raw)(void *data, 
+         unsigned *width,
+         unsigned *height, 
+         size_t *pitch);
 
 #ifdef HAVE_OVERLAY
    void (*overlay_interface)(void *data,
@@ -859,6 +871,9 @@ typedef struct
    retro_time_t core_frame_time;
    uint64_t frame_time_count;
    uint64_t frame_count;
+   uint32_t video_rotation;
+   uint32_t core_requested_rotation;
+   uint32_t full_rotation;
    uint8_t *record_gpu_buffer;
 #ifdef HAVE_VIDEO_FILTER
    rarch_softfilter_t *state_filter;

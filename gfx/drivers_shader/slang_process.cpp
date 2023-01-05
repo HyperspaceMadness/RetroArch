@@ -150,16 +150,18 @@ static bool slang_process_reflection(
       slang_semantic_meta& src = sl_reflection.semantics[semantic];
       if (src.push_constant || src.uniform)
       {
-         uniform_sem_t uniform = { map->uniforms[semantic],
-            src.num_components
-               * (unsigned)sizeof(float) };
+         uniform_sem_t uniform = { map->uniforms[semantic], src.num_components * (unsigned)sizeof(float) };
          slang_semantic _semantic   = (slang_semantic)semantic;
+         // TODO Should we reuse definition from slang_reflection.cpp
          static const char* names[] = {
             "MVP",
             "OutputSize",
             "FinalViewportSize",
             "FrameCount",
             "FrameDirection",
+            "VideoRotation",
+            "CoreRequestedRotation",
+            "FullRotation",
          };
          int size = sizeof(names) / sizeof(*names);
          if (semantic < size)
