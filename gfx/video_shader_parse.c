@@ -537,7 +537,7 @@ static struct video_shader_parameter *video_shader_parse_find_parameter(
 {
    int i;
 
-   for (i = 0; i < num_params; i++)
+   for (i = 0; (unsigned)i < num_params; i++)
    {
       if (string_is_equal(params[i].id, id))
          return &params[i];
@@ -557,7 +557,7 @@ static struct video_shader_parameter *video_shader_parse_find_parameter(
  **/
 void video_shader_resolve_parameters(struct video_shader *shader)
 {
-   int i;
+   unsigned i;
    struct video_shader_parameter *param = &shader->parameters[0];
 
    shader->num_parameters = 0;
@@ -678,7 +678,7 @@ void video_shader_resolve_parameters(struct video_shader *shader)
 bool video_shader_load_current_parameter_values(
       config_file_t *conf, struct video_shader *shader)
 {
-   int i;
+   unsigned i;
 
    if (!conf)
       return false;
@@ -781,7 +781,7 @@ static void shader_write_fbo(config_file_t *conf,
 static bool video_shader_write_root_preset(const struct video_shader *shader,
       const char *path)
 {
-   int i;
+   unsigned i;
    char key[64];
    bool ret             = true;
    char *tmp            = (char*)malloc(3 * PATH_MAX_LENGTH);
@@ -1051,6 +1051,7 @@ static bool video_shader_check_reference_chain_for_save(
 
          /* Get the absolute path for the reference */
          fill_pathname_expanded_and_absolute(nested_ref_path, conf->path, conf->references->path);
+         
 
          /* If one of the reference paths is the same as the file we want to save then this reference chain would be 
           * self-referential / cyclical and we can't save this as a simple preset*/
@@ -1113,7 +1114,7 @@ static bool video_shader_write_referenced_preset(
       const char *path_to_save,
       const struct video_shader *shader)
 {
-   int i;
+   unsigned i;
    config_file_t *conf                    = NULL;
    config_file_t *ref_conf                = NULL;
    struct video_shader *ref_shader        = (struct video_shader*)
@@ -1562,7 +1563,7 @@ static bool video_shader_load_root_config_into_shader(
       settings_t *settings,
       struct video_shader *shader)
 {
-   int i;
+   unsigned i;
    unsigned num_passes = 0;
    bool watch_files    = settings->bools.video_shader_watch_files;
 
@@ -1660,6 +1661,102 @@ static bool video_shader_load_root_config_into_shader(
    return true;
 }
 
+static char *replace_wildcards(char *inout_absolute_path, char *in_preset_path)
+{
+   bool return_val = false;
+   bool tokens_found_in_path = false;
+   int num_tokens = 4;
+   char find_tokens[4][64] = {
+      "[contentdir]\0", 
+      "[core]\0", 
+      "[game]\0", 
+      "[preset]\0"
+   };
+   char out_path[PATH_MAX_LENGTH] = "\0";
+   char replaced_path[PATH_MAX_LENGTH];
+   replaced_path[0] = '\0';
+
+   strlcpy(out_path, inout_absolute_path, sizeof(out_path));
+   strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
+
+   /* Check to see if any of the tokens are found in the textue path */
+   for (int j = 0; j < num_tokens; j++)
+   {
+      if (strstr(inout_absolute_path, find_tokens[j]))
+      {
+         tokens_found_in_path = true;
+         break;
+      }
+   }
+
+   if (tokens_found_in_path)
+   {
+      char replace_tokens[4][64] = {
+         "\0", 
+         "\0", 
+         "\0", 
+         "\0"
+      };
+
+      runloop_state_t* runloop_st = runloop_state_get_ptr();
+      const char* core_name = runloop_st->system.info.library_name;
+      const char* game_name = path_basename_nocompression(path_get(RARCH_PATH_BASENAME));
+      char content_dir_name[PATH_MAX_LENGTH] = "\0";
+      char preset_name[PATH_MAX_LENGTH] = "\0";
+      const char* rarch_path_basename = path_get(RARCH_PATH_BASENAME);
+
+      fill_pathname_parent_dir_name(content_dir_name, rarch_path_basename, sizeof(content_dir_name));
+      strlcpy(content_dir_name, path_basename_nocompression(strdup(content_dir_name)), sizeof(content_dir_name));
+      path_remove_extension(content_dir_name);
+
+      strlcpy(preset_name, path_basename_nocompression(in_preset_path), sizeof(preset_name));
+      path_remove_extension(preset_name);
+
+      strcpy(replace_tokens[0], content_dir_name);
+      strcpy(replace_tokens[1], core_name);
+      strcpy(replace_tokens[2], game_name);
+      strcpy(replace_tokens[3], preset_name);
+
+       RARCH_DBG("\n");
+       for (int i = 0; i < num_tokens; i++)
+       {
+          RARCH_DBG("     Replace Token: \"%s\" -> \"%s\" \n", find_tokens[i], replace_tokens[i]);
+       }
+       RARCH_DBG("\n");
+
+      strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
+
+      /* Replace all the tokens in the path */
+      for (int j = 0; j < num_tokens; j++)
+      {
+         if (strstr(replaced_path, find_tokens[j]))
+         {
+            char* tmp = string_replace_substring(replaced_path,
+               find_tokens[j], strlen(find_tokens[j]),
+               replace_tokens[j], strlen(replace_tokens[j]));
+
+            strlcpy(replaced_path, tmp, sizeof(replaced_path));
+         }
+      }
+
+      /* If a file does not exist at the location of the replaced path
+      * then we should replace all the tokens with the default replacement token */
+      if (!path_is_valid(replaced_path))
+      {
+         RARCH_DBG("     [Shaders]: Filename and path wildcard replacement: File can't be found: \"%s\" \n", replaced_path);
+         RARCH_DBG("                     \"%s\" \n", replaced_path);
+         RARCH_DBG("                Falling back to original filename and path before replacement \n");
+         RARCH_DBG("                     \"%s\" \n", inout_absolute_path);
+
+         strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
+      }
+
+      return_val = true;
+   }
+
+   return strdup(replaced_path);
+}
+
 /**
  * override_shader_values:
  * @param override_conf
@@ -1674,7 +1771,7 @@ static bool video_shader_load_root_config_into_shader(
 static bool override_shader_values(config_file_t *override_conf,
       struct video_shader *shader)
 {
-   int i;
+   unsigned i;
    bool return_val                     = false;
 
    if (!shader || !override_conf) 
@@ -1721,8 +1818,6 @@ static bool override_shader_values(config_file_t *override_conf,
    {
       char *override_tex_path             = (char*)malloc(PATH_MAX_LENGTH);
 
-      override_tex_path[0]                = '\0';
-
       /* Step through the textures in the shader and see if there is an entry 
        * for each in the override config */
       for (i = 0; i < shader->luts; i++)
@@ -1730,20 +1825,20 @@ static bool override_shader_values(config_file_t *override_conf,
          /* If the texture is defined in the reference config */
          if (config_get_entry(override_conf, shader->lut[i].id))
          {
-            /* Texture path from shader the config */
-            config_get_path(override_conf, shader->lut[i].id,
-                  override_tex_path, PATH_MAX_LENGTH);
+            char *tex_path             = (char*)malloc(PATH_MAX_LENGTH);
 
-            /* Get the absolute path */
-            fill_pathname_expanded_and_absolute(shader->lut[i].path,
-                  override_conf->path, override_tex_path);
+            /* Texture path from shader the config */
+            config_get_path(override_conf, shader->lut[i].id, tex_path, PATH_MAX_LENGTH);
+            fill_pathname_expanded_and_absolute(override_tex_path, override_conf->path, tex_path);
+
+            strlcpy(shader->lut[i].path, replace_wildcards(override_tex_path, override_conf->path), PATH_MAX_LENGTH);
 
 #ifdef DEBUG
             RARCH_DBG("[Shaders]: Texture: \"%s\" = %s.\n",
                         shader->lut[i].id, 
                         shader->lut[i].path);
 #endif
-
+            free(tex_path);
             return_val = true;
          }
       }
@@ -1806,7 +1901,7 @@ static bool combine_shaders(struct video_shader *combined_shader,
                             struct video_shader *first_shader,
                             struct video_shader *second_shader)
 {
-   int i, j;
+   unsigned i, j;
 
    for (i = 0; i < first_shader->passes && i <= GFX_MAX_SHADERS; i++)
    {
@@ -1953,8 +2048,8 @@ bool video_shader_load_preset_into_shader(const char *path,
       goto end;
    }
 
-   /* Check if the root preset is a valid shader chain */
-   /* If the config has a shaders entry then it is considered 
+   /* Check if the root preset is a valid shader chain 
+      If the config has a shaders entry then it is considered 
       a shader chain config, vs a config which may only have 
       parameter values and texture overrides
    */
