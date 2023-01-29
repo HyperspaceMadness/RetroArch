@@ -81,7 +81,8 @@ static path_change_data_t *file_change_data = NULL;
  * out_path is filled with the absolute path
  **/
 static void fill_pathname_expanded_and_absolute(char *out_path,
-      const char *in_refpath, const char *in_path)
+      const char *in_refpath, 
+      const char *in_path)
 {
    char expanded_path[PATH_MAX_LENGTH];
 
@@ -101,6 +102,138 @@ static void fill_pathname_expanded_and_absolute(char *out_path,
    pathname_conform_slashes_to_os(out_path);
 }
 
+/**
+ * replace_wildcards:
+ * 
+ * @param in_absolute_path
+ * Absolute path to replace wildcards in
+ * 
+ * @param in_preset_path
+ * Path of the preset that this path is being used in
+ *
+ * All the wildcards are replaced by the live values which come from retroarch
+ * or the preset context
+ * 
+ * Possible wildcards/tokens to be replaced:
+ *   [contentdir] -> Content Directory of the game rom
+ *   [core]       -> Core name
+ *   [game]       -> Game ROM's name
+ *   [preset]     -> Preset's name
+ * 
+ * If no wildcards are found within the path, 
+ * or the path with the wildcards replaced does not exist on disk,
+ * the path returned will be returned uneffected.
+ *
+ * @return char *
+ **/
+static char *replace_wildcards(char *in_absolute_path, char *in_preset_path)
+{
+   bool return_val = false;
+   bool tokens_found_in_path = false;
+   int num_tokens = 4;
+   char find_tokens[4][64] = {
+      "[contentdir]\0", 
+      "[core]\0", 
+      "[game]\0", 
+      "[preset]\0"
+   };
+   char out_path[PATH_MAX_LENGTH] = "\0";
+   char replaced_path[PATH_MAX_LENGTH] = "\0";
+
+   strlcpy(out_path, in_absolute_path, sizeof(out_path));
+   strlcpy(replaced_path, in_absolute_path, sizeof(replaced_path));
+
+   /* Check to see if any of the tokens are found in the textue path */
+   for (int j = 0; j < num_tokens; j++)
+   {
+      if (strstr(in_absolute_path, find_tokens[j]))
+      {
+         tokens_found_in_path = true;
+         break;
+      }
+   }
+
+   if (tokens_found_in_path)
+   {
+      char replace_tokens[4][64] = {
+         "\0", 
+         "\0", 
+         "\0", 
+         "\0"
+      };
+
+      runloop_state_t* runloop_st = runloop_state_get_ptr();
+      const char* core_name = runloop_st->system.info.library_name;
+      const char* game_name = path_basename_nocompression(path_get(RARCH_PATH_BASENAME));
+      char content_dir_name[PATH_MAX_LENGTH] = "\0";
+      char preset_name[PATH_MAX_LENGTH] = "\0";
+      const char* rarch_path_basename = path_get(RARCH_PATH_BASENAME);
+
+      fill_pathname_parent_dir_name(content_dir_name, rarch_path_basename, sizeof(content_dir_name));
+      strlcpy(content_dir_name, path_basename_nocompression(strdup(content_dir_name)), sizeof(content_dir_name));
+      path_remove_extension(content_dir_name);
+
+      strlcpy(preset_name, path_basename_nocompression(in_preset_path), sizeof(preset_name));
+      path_remove_extension(preset_name);
+
+      strcpy(replace_tokens[0], content_dir_name);
+      strcpy(replace_tokens[1], core_name);
+      strcpy(replace_tokens[2], game_name);
+      strcpy(replace_tokens[3], preset_name);
+
+      // TODO must remove this before release
+      //  RARCH_DBG("\n");
+      //  for (int i = 0; i < num_tokens; i++)
+      //  {
+      //     RARCH_DBG("     Replace Token: \"%s\" -> \"%s\" \n", find_tokens[i], replace_tokens[i]);
+      //  }
+      //  RARCH_DBG("\n");
+
+      strlcpy(replaced_path, in_absolute_path, sizeof(replaced_path));
+
+      /* Replace all the tokens in the path */
+      for (int j = 0; j < num_tokens; j++)
+      {
+         if (strstr(replaced_path, find_tokens[j]))
+         {
+            char* tmp = string_replace_substring(replaced_path,
+               find_tokens[j], strlen(find_tokens[j]),
+               replace_tokens[j], strlen(replace_tokens[j]));
+
+            strlcpy(replaced_path, tmp, sizeof(replaced_path));
+         }
+      }
+
+      /* If a file does not exist at the location of the replaced path
+       * then we should replace all the tokens with the default replacement token */
+      if (!path_is_valid(replaced_path))
+      {
+         RARCH_DBG("[Shaders]: Filepath after wildcard replacement can't be found:\n");
+         RARCH_DBG("                \"%s\" \n", replaced_path);
+         RARCH_DBG("           Falling back to original filename and path before replacement \n");
+         RARCH_DBG("                \"%s\" \n", in_absolute_path);
+
+         strlcpy(replaced_path, in_absolute_path, sizeof(replaced_path));
+      }
+
+      return_val = true;
+   }
+
+   return strdup(replaced_path);
+}
+
+/**
+ * gather_reference_path_list:
+ * 
+ * @param path_linked_list
+ * List of paths which accrues as we move down the chain of references
+ * @param path
+ * Current path of preset to process
+ * @param reference_depth
+ * This is used to check against the SHADER_MAX_REFERENCE_DEPTH
+ *
+ * @return void
+ **/
 static void gather_reference_path_list(
       struct path_linked_list *in_path_linked_list, 
       char *path, 
@@ -118,7 +251,10 @@ static void gather_reference_path_list(
       {
          char* reference_preset_path = (char*)malloc(PATH_MAX_LENGTH);
 
+         /* Get the absolute path and replace wildcards in the path */
          fill_pathname_expanded_and_absolute(reference_preset_path, conf->path, ref_tmp->path);
+         strlcpy(reference_preset_path, replace_wildcards(reference_preset_path, conf->path), PATH_MAX_LENGTH);
+
          gather_reference_path_list(in_path_linked_list, reference_preset_path, reference_depth + 1);
 
          free(reference_preset_path);
@@ -128,7 +264,7 @@ static void gather_reference_path_list(
    }
    else
    {
-      RARCH_WARN("\n            [Shaders]: No Preset located at \"%s\".\n", path);
+      RARCH_WARN("\n[Shaders]: No preset located at \"%s\".\n", path);
    }
    config_file_free(conf);
 }
@@ -240,9 +376,9 @@ static bool video_shader_parse_pass(config_file_t *conf,
       return false;
    }
 
-   /* Get the absolute path */
-   fill_pathname_expanded_and_absolute(pass->source.path,
-         conf->path, tmp_path);
+   /* Get the absolute path and replace wildcards in the path */
+   fill_pathname_expanded_and_absolute(pass->source.path, conf->path, tmp_path);
+   strlcpy(pass->source.path, replace_wildcards(pass->source.path, conf->path), PATH_MAX_LENGTH);
 
    /* Smooth */
    strlcpy(filter_name_buf, "filter_linear", sizeof(filter_name_buf));
@@ -481,9 +617,9 @@ static bool video_shader_parse_textures(config_file_t *conf,
 
       config_get_path(conf, id, texture_path, sizeof(texture_path));
 
-      /* Get the absolute path */
-      fill_pathname_expanded_and_absolute(
-            shader->lut[shader->luts].path, conf->path, texture_path);
+      /* Get the absolute path and replace wildcards in the path */
+      fill_pathname_expanded_and_absolute(shader->lut[shader->luts].path, conf->path, texture_path);
+      strlcpy(shader->lut[shader->luts].path, replace_wildcards(shader->lut[shader->luts].path, conf->path), PATH_MAX_LENGTH);
 
       entry = NULL;
 
@@ -964,8 +1100,9 @@ static config_file_t *video_shader_get_root_preset_config(const char *path)
          return NULL;
       }
 
-      /* Get the absolute path for the reference */
-      fill_pathname_expanded_and_absolute(nested_reference_path, conf->path, conf->references->path);
+      /* Get the absolute path and replace wildcards in the path */
+       fill_pathname_expanded_and_absolute(nested_reference_path, conf->path, conf->references->path);
+       strlcpy(nested_reference_path, replace_wildcards(nested_reference_path, conf->path), PATH_MAX_LENGTH);
 
       /* Create a new config from the referenced path */
       config_file_free(conf);
@@ -1049,9 +1186,9 @@ static bool video_shader_check_reference_chain_for_save(
             break;
          }
 
-         /* Get the absolute path for the reference */
+         /* Get the absolute path and replace wildcards in the path */
          fill_pathname_expanded_and_absolute(nested_ref_path, conf->path, conf->references->path);
-         
+         strlcpy(nested_ref_path, replace_wildcards(nested_ref_path, conf->path), PATH_MAX_LENGTH);
 
          /* If one of the reference paths is the same as the file we want to save then this reference chain would be 
           * self-referential / cyclical and we can't save this as a simple preset*/
@@ -1195,9 +1332,9 @@ static bool video_shader_write_referenced_preset(
     * trying to save */
    if (ref_conf->references)
    {
-      /* Get the absolute path for the reference */
-      fill_pathname_expanded_and_absolute(abs_tmp_ref_path,
-            ref_conf->path, ref_conf->references->path);
+      /* Get the absolute path and replace wildcards in the path */
+      fill_pathname_expanded_and_absolute(abs_tmp_ref_path, ref_conf->path, ref_conf->references->path);
+      strlcpy(abs_tmp_ref_path, replace_wildcards(abs_tmp_ref_path, ref_conf->path), PATH_MAX_LENGTH);
 
       pathname_conform_slashes_to_os(abs_tmp_ref_path);
 
@@ -1235,9 +1372,9 @@ static bool video_shader_write_referenced_preset(
        * we will use this same nested reference for the new preset */
       if (ref_conf->references)
       {
-         /* Get the absolute path for the reference */
-         fill_pathname_expanded_and_absolute(path_to_ref,
-               ref_conf->path, ref_conf->references->path);
+         /* Get the absolute path and replace wildcards in the path */
+         fill_pathname_expanded_and_absolute(path_to_ref, ref_conf->path, ref_conf->references->path);
+         strlcpy(path_to_ref, replace_wildcards(path_to_ref, ref_conf->path), PATH_MAX_LENGTH);
 
          /* If the reference path is also the same as what 
           * we are trying to save 
@@ -1255,8 +1392,11 @@ static bool video_shader_write_referenced_preset(
             /* If the reference also has a reference inside it */
             /* Get the absolute path for the reference */
             if (ref_conf->references)
-               fill_pathname_expanded_and_absolute(path_to_ref,
-                     ref_conf->path, ref_conf->references->path);
+            {
+               /* Get the absolute path and replace wildcards in the path */
+               fill_pathname_expanded_and_absolute(path_to_ref, ref_conf->path, ref_conf->references->path);
+               strlcpy(path_to_ref, replace_wildcards(path_to_ref, ref_conf->path), PATH_MAX_LENGTH);
+            }
             else
             {
                /* If the config referenced is a full preset */
@@ -1661,102 +1801,6 @@ static bool video_shader_load_root_config_into_shader(
    return true;
 }
 
-static char *replace_wildcards(char *inout_absolute_path, char *in_preset_path)
-{
-   bool return_val = false;
-   bool tokens_found_in_path = false;
-   int num_tokens = 4;
-   char find_tokens[4][64] = {
-      "[contentdir]\0", 
-      "[core]\0", 
-      "[game]\0", 
-      "[preset]\0"
-   };
-   char out_path[PATH_MAX_LENGTH] = "\0";
-   char replaced_path[PATH_MAX_LENGTH];
-   replaced_path[0] = '\0';
-
-   strlcpy(out_path, inout_absolute_path, sizeof(out_path));
-   strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
-
-   /* Check to see if any of the tokens are found in the textue path */
-   for (int j = 0; j < num_tokens; j++)
-   {
-      if (strstr(inout_absolute_path, find_tokens[j]))
-      {
-         tokens_found_in_path = true;
-         break;
-      }
-   }
-
-   if (tokens_found_in_path)
-   {
-      char replace_tokens[4][64] = {
-         "\0", 
-         "\0", 
-         "\0", 
-         "\0"
-      };
-
-      runloop_state_t* runloop_st = runloop_state_get_ptr();
-      const char* core_name = runloop_st->system.info.library_name;
-      const char* game_name = path_basename_nocompression(path_get(RARCH_PATH_BASENAME));
-      char content_dir_name[PATH_MAX_LENGTH] = "\0";
-      char preset_name[PATH_MAX_LENGTH] = "\0";
-      const char* rarch_path_basename = path_get(RARCH_PATH_BASENAME);
-
-      fill_pathname_parent_dir_name(content_dir_name, rarch_path_basename, sizeof(content_dir_name));
-      strlcpy(content_dir_name, path_basename_nocompression(strdup(content_dir_name)), sizeof(content_dir_name));
-      path_remove_extension(content_dir_name);
-
-      strlcpy(preset_name, path_basename_nocompression(in_preset_path), sizeof(preset_name));
-      path_remove_extension(preset_name);
-
-      strcpy(replace_tokens[0], content_dir_name);
-      strcpy(replace_tokens[1], core_name);
-      strcpy(replace_tokens[2], game_name);
-      strcpy(replace_tokens[3], preset_name);
-
-       RARCH_DBG("\n");
-       for (int i = 0; i < num_tokens; i++)
-       {
-          RARCH_DBG("     Replace Token: \"%s\" -> \"%s\" \n", find_tokens[i], replace_tokens[i]);
-       }
-       RARCH_DBG("\n");
-
-      strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
-
-      /* Replace all the tokens in the path */
-      for (int j = 0; j < num_tokens; j++)
-      {
-         if (strstr(replaced_path, find_tokens[j]))
-         {
-            char* tmp = string_replace_substring(replaced_path,
-               find_tokens[j], strlen(find_tokens[j]),
-               replace_tokens[j], strlen(replace_tokens[j]));
-
-            strlcpy(replaced_path, tmp, sizeof(replaced_path));
-         }
-      }
-
-      /* If a file does not exist at the location of the replaced path
-      * then we should replace all the tokens with the default replacement token */
-      if (!path_is_valid(replaced_path))
-      {
-         RARCH_DBG("     [Shaders]: Filename and path wildcard replacement: File can't be found: \"%s\" \n", replaced_path);
-         RARCH_DBG("                     \"%s\" \n", replaced_path);
-         RARCH_DBG("                Falling back to original filename and path before replacement \n");
-         RARCH_DBG("                     \"%s\" \n", inout_absolute_path);
-
-         strlcpy(replaced_path, inout_absolute_path, sizeof(replaced_path));
-      }
-
-      return_val = true;
-   }
-
-   return strdup(replaced_path);
-}
-
 /**
  * override_shader_values:
  * @param override_conf
@@ -1829,15 +1873,19 @@ static bool override_shader_values(config_file_t *override_conf,
 
             /* Texture path from shader the config */
             config_get_path(override_conf, shader->lut[i].id, tex_path, PATH_MAX_LENGTH);
-            fill_pathname_expanded_and_absolute(override_tex_path, override_conf->path, tex_path);
 
-            strlcpy(shader->lut[i].path, replace_wildcards(override_tex_path, override_conf->path), PATH_MAX_LENGTH);
+            /* Get the absolute path and replace wildcards in the path */
+            fill_pathname_expanded_and_absolute(override_tex_path, override_conf->path, tex_path);
+            strlcpy(override_tex_path, replace_wildcards(override_tex_path, override_conf->path), PATH_MAX_LENGTH);
+
+            strlcpy(shader->lut[i].path, override_tex_path, PATH_MAX_LENGTH);
 
 #ifdef DEBUG
             RARCH_DBG("[Shaders]: Texture: \"%s\" = %s.\n",
                         shader->lut[i].id, 
                         shader->lut[i].path);
 #endif
+
             free(tex_path);
             return_val = true;
          }
@@ -2089,7 +2137,9 @@ bool video_shader_load_preset_into_shader(const char *path,
       config_file_t *tmp_conf = NULL;
       char *path_to_ref       = (char*)malloc(PATH_MAX_LENGTH);
 
+      /* Get the absolute path and replace wildcards in the path */
       fill_pathname_expanded_and_absolute(path_to_ref, conf->path, path_list_tmp->path);
+      strlcpy(path_to_ref, replace_wildcards(path_to_ref, conf->path), PATH_MAX_LENGTH);
 
       if ((tmp_conf = video_shader_get_root_preset_config(path_to_ref)))
       {
