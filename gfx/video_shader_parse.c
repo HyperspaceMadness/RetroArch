@@ -130,12 +130,13 @@ static char *replace_wildcards(char *in_absolute_path, char *in_preset_path)
 {
    bool return_val = false;
    bool tokens_found_in_path = false;
-   int num_tokens = 4;
-   char find_tokens[4][64] = {
+   int num_tokens = 5;
+   char find_tokens[5][64] = {
       "[contentdir]\0", 
       "[core]\0", 
       "[game]\0", 
-      "[preset]\0"
+      "[preset]\0",
+      "[rotation]\0"
    };
    char out_path[PATH_MAX_LENGTH] = "\0";
    char replaced_path[PATH_MAX_LENGTH] = "\0";
@@ -155,11 +156,19 @@ static char *replace_wildcards(char *in_absolute_path, char *in_preset_path)
 
    if (tokens_found_in_path)
    {
-      char replace_tokens[4][64] = {
+      char replace_tokens[5][64] = {
          "\0", 
          "\0", 
-         "\0", 
+         "\0",
+         "\0",
          "\0"
+      };
+
+      char rotation_replace_strings[4][64] = {
+         "rotation0\0", 
+         "rotation90\0", 
+         "rotation180\0", 
+         "rotation270\0"
       };
 
       runloop_state_t* runloop_st = runloop_state_get_ptr();
@@ -180,6 +189,7 @@ static char *replace_wildcards(char *in_absolute_path, char *in_preset_path)
       strcpy(replace_tokens[1], core_name);
       strcpy(replace_tokens[2], game_name);
       strcpy(replace_tokens[3], preset_name);
+      strcpy(replace_tokens[4], rotation_replace_strings[retroarch_get_core_requested_rotation()]);
 
       // TODO must remove this before release
       //  RARCH_DBG("\n");
