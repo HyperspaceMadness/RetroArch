@@ -2087,10 +2087,13 @@ static int generic_action_ok(const char *path,
                menu_shader_manager_append_preset(shader, action_path, 
                                                  string_is_equal(menu_label, msg_hash_to_str(MENU_ENUM_LABEL_VIDEO_SHADER_PRESET_PREPEND)));
             else
+            {
+               enum rarch_shader_type shader_type = menu_driver_get_last_shader_preset_type();
                menu_shader_manager_set_preset(shader,
-                     menu_driver_get_last_shader_preset_type(),
-                     action_path,
-                     true);
+                  shader_type,
+                  action_path,
+                  true);
+            }
          }
 #endif
          break;

@@ -1323,6 +1323,13 @@ struct string_list *dir_list_new_special(const char *input_dir,
                string_list_append(&str_list, "slang", attr);
             }
 
+            /* 
+               Add the meta preset type which should be available for all video drivers 
+               This preset type allows one preset to be used but call the other preset type
+               appropriate to the current video driver
+            */
+            string_list_append(&str_list, "metap", attr);
+
             string_list_join_concat(ext_shaders, sizeof(ext_shaders), &str_list, "|");
             string_list_deinitialize(&str_list);
             exts = ext_shaders;

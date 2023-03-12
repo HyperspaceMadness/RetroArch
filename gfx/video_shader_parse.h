@@ -51,7 +51,8 @@ enum rarch_shader_type
    RARCH_SHADER_HLSL,
    RARCH_SHADER_GLSL,
    RARCH_SHADER_SLANG,
-   RARCH_SHADER_METAL
+   RARCH_SHADER_METAL,
+   RARCH_SHADER_META
 };
 
 enum gfx_scale_type
@@ -178,14 +179,25 @@ struct video_shader
 
    char prefix[64];
 
-   /* Path to the root preset */
-   char path[PATH_MAX_LENGTH];
-
-   /* Path to the original preset loaded, if this is a preset 
-    * with the #reference directive, then this will be different 
-    * than the path */
+   /* Path to the original preset loaded */
    char loaded_preset_path[PATH_MAX_LENGTH];
 
+   /* If this is a `Simple Preset` this means `loaded_preset_path` points to a preset with a #reference directive 
+    * in it and 'path' will point to the preset used by the #reference directive
+    * If this is a `Full Preset` this means that `loaded_preset_path` will point to a preset with no #reference directive,
+    * in this case `path` will be the same as 'loaded_preset_path'
+    */
+   char path[PATH_MAX_LENGTH];
+
+   /* Path to the final full preset to be loaded
+    * If 'path' points to a `Full Preset` then `root_preset_path` will be the same as `path`
+    * If `path` points to a `Simple Preset` then `root_preset_path` will point to the `Full Preset`
+    * at the end of the reference chain
+    */
+   char root_preset_path[PATH_MAX_LENGTH];
+
+   /* Shader Type defined by the root preset */
+   enum rarch_shader_type shader_type;
 };
 
 #define RARCH_WILDCARD_DELIMITER "$"
@@ -266,6 +278,8 @@ bool video_shader_write_preset(const char *path,
 
 enum rarch_shader_type video_shader_get_type_from_ext(const char *ext, bool *is_preset);
 
+enum rarch_shader_type video_shader_get_shader_type_from_preset_or_shader(const char *path, bool *is_preset);
+
 /**
  * video_shader_parse_type:
  * @path              : Shader path.
@@ -275,7 +289,9 @@ enum rarch_shader_type video_shader_get_type_from_ext(const char *ext, bool *is_
  * Returns: value of shader type if it could be determined,
  * otherwise RARCH_SHADER_NONE.
  **/
-#define video_shader_parse_type(path) video_shader_get_type_from_ext(path_get_extension((path)), NULL)
+// #define video_shader_parse_type(path) video_shader_get_type_from_ext(path_get_extension((path)), NULL)
+
+#define video_shader_parse_type(path) video_shader_get_shader_type_from_preset_or_shader(path, NULL)
 
 bool video_shader_is_supported(enum rarch_shader_type type);
 

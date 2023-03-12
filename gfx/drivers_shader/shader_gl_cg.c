@@ -975,8 +975,10 @@ static void *gl_cg_init(void *data, const char *path)
 
    {
       bool is_preset;
-      enum rarch_shader_type type =
-         video_shader_get_type_from_ext(path_get_extension(path), &is_preset);
+      // enum rarch_shader_type type =
+      //    video_shader_get_type_from_ext(path_get_extension(path), &is_preset);
+
+      enum rarch_shader_type type = video_shader_get_shader_type_from_preset_or_shader(path, &is_preset);
 
       if (!string_is_empty(path) && type != RARCH_SHADER_CG)
       {

@@ -1766,6 +1766,13 @@ void ShaderParamsDialog::onShaderLoadPresetClicked()
       filter.append(".slangp");
    }
 
+   /* 
+      Add the meta preset type which should be available for all video drivers 
+      This preset type allows one preset to be used but call the other preset type
+      appropriate to the current video driver
+   */
+   filter.append(".metap");
+
    filter.append(")");
    path       = QFileDialog::getOpenFileName(
          this,

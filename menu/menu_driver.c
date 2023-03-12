@@ -3946,7 +3946,7 @@ bool menu_shader_manager_operate_auto_preset(
    char file[PATH_MAX_LENGTH];
    static enum rarch_shader_type shader_types[] =
    {
-      RARCH_SHADER_GLSL, RARCH_SHADER_SLANG, RARCH_SHADER_CG
+      RARCH_SHADER_GLSL, RARCH_SHADER_SLANG, RARCH_SHADER_CG, RARCH_SHADER_META
    };
    const char *core_name            = system ? system->library_name : NULL;
    const char *rarch_path_basename  = path_get(RARCH_PATH_BASENAME);
@@ -4131,8 +4131,11 @@ void menu_driver_set_last_shader_path_int(
 
    /* Get shader type */
    /* If type is invalid, do nothing */
+   // Need to get shader type here
    if ((*type = video_shader_parse_type(shader_path)) == RARCH_SHADER_NONE)
+   {
       return;
+   }
 
    /* Cache parent directory */
    fill_pathname_parent_dir(shader_dir, shader_path, dir_len);
@@ -7355,8 +7358,7 @@ bool menu_shader_manager_init(void)
    if (string_is_empty(path_shader))
       goto end;
 
-   type = video_shader_get_type_from_ext(path_get_extension(path_shader),
-         &is_preset);
+   type = video_shader_get_shader_type_from_preset_or_shader(path_shader, &is_preset);
 
    if (!video_shader_is_supported(type))
    {

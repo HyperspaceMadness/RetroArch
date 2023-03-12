@@ -1320,6 +1320,25 @@ static config_file_t *video_shader_get_root_preset_config(const char *path)
    return conf;
 }
 
+
+enum rarch_shader_type video_shader_get_shader_type_from_preset_or_shader(const char *path, bool *is_preset)
+{
+   enum rarch_shader_type type = RARCH_SHADER_NONE;
+   type = video_shader_get_type_from_ext(path_get_extension(path), is_preset);
+
+   if (is_preset)
+   {
+      config_file_t* conf = video_shader_get_root_preset_config(path);
+
+      if (conf)
+      {
+         type = video_shader_get_type_from_ext(path_get_extension(conf->path), is_preset);
+         free(conf);
+      }
+   }
+   return type;
+}
+
 /**
  * video_shader_check_reference_chain:
  * @param path_to_save
@@ -2457,6 +2476,9 @@ bool video_shader_is_supported(enum rarch_shader_type type)
       case RARCH_SHADER_HLSL:
          testflag = GFX_CTX_FLAGS_SHADERS_HLSL;
          break;
+      case RARCH_SHADER_META:
+         testflag = true;
+         break;
       case RARCH_SHADER_NONE:
       default:
          return false;
@@ -2510,7 +2532,8 @@ enum rarch_shader_type video_shader_get_type_from_ext(
       *is_preset =
          string_is_equal_case_insensitive(ext, "cgp")   ||
          string_is_equal_case_insensitive(ext, "glslp") ||
-         string_is_equal_case_insensitive(ext, "slangp");
+         string_is_equal_case_insensitive(ext, "slangp") ||
+         string_is_equal_case_insensitive(ext, "metap");
 
    if (string_is_equal_case_insensitive(ext, "cgp") ||
        string_is_equal_case_insensitive(ext, "cg")
@@ -2526,6 +2549,9 @@ enum rarch_shader_type video_shader_get_type_from_ext(
        string_is_equal_case_insensitive(ext, "slang")
       )
       return RARCH_SHADER_SLANG;
+
+   if (string_is_equal_case_insensitive(ext, "metap"))
+      return RARCH_SHADER_META;
 
    return RARCH_SHADER_NONE;
 }
@@ -2848,7 +2874,7 @@ static bool video_shader_load_shader_preset_internal(
    {
       /* Shader preset priority, highest to lowest
        * only important for video drivers with multiple shader backends */
-      RARCH_SHADER_GLSL, RARCH_SHADER_SLANG, RARCH_SHADER_CG, RARCH_SHADER_HLSL
+      RARCH_SHADER_GLSL, RARCH_SHADER_SLANG, RARCH_SHADER_CG, RARCH_SHADER_HLSL, RARCH_SHADER_META
    };
 
    for (i = 0; i < ARRAY_SIZE(types); i++)

@@ -14174,6 +14174,13 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
                   break;
             }
 
+            /* 
+               Add the meta preset type which should be available for all video drivers 
+               This preset type allows one preset to be used but call the other preset type
+               appropriate to the current video driver
+            */
+            string_list_append(&str_list, "metap", attr);
+
             string_list_join_concat(new_exts, sizeof(new_exts), &str_list, "|");
             if (!string_is_empty(info->exts))
                free(info->exts);
@@ -14207,6 +14214,13 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
             if (video_shader_is_supported(RARCH_SHADER_SLANG))
                string_list_append(&str_list, "slangp", attr);
 
+            /* 
+               Add the meta preset type which should be available for all video drivers 
+               This preset type allows one preset to be used but call the other preset type
+               appropriate to the current video driver
+            */
+            string_list_append(&str_list, "metap", attr);
+
             string_list_join_concat(new_exts, sizeof(new_exts), &str_list, "|");
             if (!string_is_empty(info->exts))
                free(info->exts);
@@ -14239,6 +14253,13 @@ bool menu_displaylist_ctl(enum menu_displaylist_ctl_state type,
                string_list_append(&str_list, "glslp", attr);
             if (video_shader_is_supported(RARCH_SHADER_SLANG))
                string_list_append(&str_list, "slangp", attr);
+
+            /* 
+               Add the meta preset type which should be available for all video drivers 
+               This preset type allows one preset to be used but call the other preset type
+               appropriate to the current video driver
+            */
+            string_list_append(&str_list, "metap", attr);
 
             string_list_join_concat(new_exts, sizeof(new_exts), &str_list, "|");
             if (!string_is_empty(info->exts))

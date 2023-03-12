@@ -408,6 +408,9 @@ static bool d3d10_gfx_set_shader(void* data, enum rarch_shader_type type, const 
    if (string_is_empty(path))
       return true;
 
+   // Need to get the shader type from the preset, it would be better if we passed in the preset and 
+   // copied it instead of loading it, and test the root preset type 
+
    if (type != RARCH_SHADER_SLANG)
    {
       RARCH_WARN("[D3D10]: Only Slang shaders are supported. Falling back to stock.\n");
@@ -1056,6 +1059,7 @@ static void *d3d10_gfx_init(const video_info_t* video,
       video_context_driver_set(&d3d10_fake_context); 
 #ifdef HAVE_SLANG
       const char *shader_preset   = video_shader_get_current_shader_preset();
+      // Need to set correct type here
       enum rarch_shader_type type = video_shader_parse_type(shader_preset);
       d3d10_gfx_set_shader(d3d10, type, shader_preset);
 #endif
